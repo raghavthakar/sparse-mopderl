@@ -1,0 +1,18 @@
+cffi
+Cython
+fastrand
+glfw
+gym==0.15.3
+numpy
+pandas
+torch
+torchvision
+scipy
+patchelf
+matplotlib
+pygmo==2.16.1
+opencv-python
+# free-mujoco-py
+wandb
+# mujoco
+mujoco-py<2.2,>=2.1 
