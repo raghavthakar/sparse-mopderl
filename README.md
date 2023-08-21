@@ -42,3 +42,5 @@ python scrips/swimmer-v2.py --pgmorl --savedir=../result/PGMORL/MO-Swimmer-v2
 Results for each run will be at: "*your_save_dir/environment_name/run_***/archive*"
 
 
+## Credit
+This repository is largely based on the code of [Cris Bodnar et al](https://github.com/crisbodnar/pderl) and we would like to thank them for making their code publicly available.
