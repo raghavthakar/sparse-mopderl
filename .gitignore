@@ -1,0 +1,73 @@
+# Byte-compiled / optimized / compiled files
+__pycache__/
+*.pyc
+*.pyd
+*.pyo
+*.egg-info/
+.pytest_cache/
+
+# Conda environment files
+# Ignore the entire Conda environment directory if it's within the project
+# For example, if you create a 'venv' or 'env' directory for your environment
+# venv/
+# env/
+
+# Operating System files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+.Spotlight-V100
+.Trashes
+Desktop.ini
+~$*
+
+# Editor-specific files
+# VS Code
+.vscode/
+# PyCharm
+.idea/
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+# Vim
+*.swp
+*.swo
+*.swn
+*.bak
+*.tmp
+*.log
+
+# Jupyter Notebook files
+.ipynb_checkpoints/
+*.ipynb
+
+# Environment variables and sensitive data
+.env
+*.env
+# If you use a specific configuration file for sensitive data, add it here
+# config.ini
+# credentials.json
+
+# Build artifacts
+dist/
+build/
+*.egg
+
+# Logs and temporary files
+*.log
+tmp/
+temp/
+
+# Data files (if not intended for version control)
+# data/
+# *.csv
+# *.json
+# If your project deals with large datasets that should not be in Git,
+# consider using Git LFS or excluding specific data directories.
+
+# Coverage reports
+.coverage
+htmlcov/
+
+# Miscellaneous
+.DS_Store
