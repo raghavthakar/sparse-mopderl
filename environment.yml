@@ -1,0 +1,24 @@
+name: null
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python
+  - cffi
+  - cython
+  - glfw
+  - gymnasium
+  - numpy
+  - pandas
+  - pytorch
+  - torchvision
+  - scipy
+  - patchelf
+  - matplotlib
+  - pygmo
+  - opencv
+  - pip
+  - pip:
+      - fastrand
+      - wandb
+      - mujoco
