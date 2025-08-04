@@ -3,7 +3,7 @@ from torch.autograd import Variable
 import pickle
 import numpy as np
 import torch
-import gym
+import gymnasium as gym
 import json
 from nsga2_tools import *
 

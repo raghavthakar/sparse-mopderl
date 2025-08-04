@@ -6,7 +6,7 @@ import environments
 
 from datetime import datetime
 import numpy as np, os, time, random
-import gym, torch
+import gymnasium as gym, torch
 import argparse
 from parameters import Parameters
 import logging
