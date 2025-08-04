@@ -21,6 +21,16 @@ class NormalizedActions(gym.ActionWrapper):
         action = action * 2 - 1
         return action
 
+    def seed(self, seed=None):
+        """Forward seed() to the wrapped env and its action_space."""
+        seeds = []
+        # gym.ActionWrapper keeps the wrapped env in .env
+        if hasattr(self.env, "seed"):
+            seeds.append(self.env.seed(seed))
+        if hasattr(self.action_space, "seed"):
+            seeds.append(self.action_space.seed(seed))
+        return seeds
+
 
 def fanin_init(size, fanin=None):
     fanin = fanin or size[0]

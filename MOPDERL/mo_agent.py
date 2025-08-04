@@ -101,7 +101,8 @@ class MOAgent:
             action = agent.actor.select_action(np.array(state), is_action_noise)
 
             # Simulate one step in environment
-            next_state, _, done, info = self.env.step(action.flatten())
+            next_state, _, terminated, truncated, info = self.env.step(action.flatten())
+            done = bool(terminated or truncated)
             reward = info["obj"]
             total_reward += reward
 
@@ -380,4 +381,3 @@ class MOAgent:
         wu_info = os.path.join(self.checkpoint_folder, "wu_info.npy")
         shutil.copy(info, wu_info)
         logger.info("=>>>>>> Saving warmup info successfully!")
-

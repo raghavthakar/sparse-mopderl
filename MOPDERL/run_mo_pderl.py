@@ -2,11 +2,43 @@ import os, sys
 from pathlib import Path
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(ROOT_DIR, ".."))
-import environments
 
 from datetime import datetime
 import numpy as np, os, time, random
 import gymnasium as gym, torch
+import mo_gymnasium as mo_gym
+
+# -----------------------------------------------------------------------------
+# A thin adapter so MOPDERL still sees `info['obj'] = np.ndarray([obj1, obj2])`
+class MOPDERLWrapper(gym.Env):
+    def __init__(self, base_env):
+        super().__init__()
+        self.env = base_env
+        self.action_space = base_env.action_space
+        self.observation_space = base_env.observation_space
+
+    def seed(self, seed=None):
+        # forward seeding to the wrapped env and its action_space
+        seeds = []
+        if hasattr(self.env, "seed"):
+            seeds.append(self.env.seed(seed))
+        if hasattr(self.action_space, "seed"):
+            seeds.append(self.action_space.seed(seed))
+        # Gymnasium-style reset seeding for obs RNG can go here if needed
+        return seeds
+
+    def reset(self, **kwargs):
+        obs, info = self.env.reset(**kwargs)
+        return obs
+
+    def step(self, action):
+        obs, vec_r, terminated, truncated, info = self.env.step(action)
+        # MO-Gymnasium returns the vector reward as the second return:
+        #   vec_r = np.array([velocity, energy])
+        info['obj'] = vec_r
+        # MOPDERL expects a scalar for training, so we sum them here:
+        return obs, float(vec_r.sum()), terminated, truncated, info
+# -----------------------------------------------------------------------------
 import argparse
 from parameters import Parameters
 import logging
@@ -72,7 +104,17 @@ if __name__ == "__main__":
     logger.info("Start time: " + datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
 
     # Create Env
-    env = utils.NormalizedActions(gym.make(parameters.env_name))
+    # map from MOPDERL’s name → MO-Gymnasium’s name
+    name_map = {
+        "MO-Swimmer-v2": "mo-swimmer-v5",
+        # add other envs here if you need them:
+        # "MO-Hopper-v2":  "mo-hopper-v5",
+        # "MO-Ant-v2":     "mo-ant-v5",
+    }
+    mo_name = name_map.get(parameters.env_name, parameters.env_name.lower())
+    base_env = mo_gym.make(mo_name)
+    # wrap + normalize actions exactly like before
+    env = utils.NormalizedActions(MOPDERLWrapper(base_env))
     # env = gym.make(parameters.env_name)
     parameters.action_dim = env.action_space.shape[0]
     parameters.state_dim = env.observation_space.shape[0]
@@ -147,12 +189,3 @@ if __name__ == "__main__":
         
 
     logger.info("End time: " + datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
-
-
-
-
-
-
-
-
-
