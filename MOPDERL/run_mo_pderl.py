@@ -65,7 +65,7 @@ parser.add_argument('-checkpoint_id', help='Select -run- to load checkpoint', ty
 parser.add_argument('-run_id', help="Specify run id, if not given, get id as len(run)", type=int)
 parser.add_argument('-save_ckpt', help="Save checkpoint every _ step, 0 for no save", type=int, default=1)
 parser.add_argument('-disable_wandb', action="store_true", default=False)
-parser.add_argument('-boundary_only', action='store_true', default=False)
+parser.add_argument('-boundary_only', help="If false, will create a distinct RL agent for each objective and also one that weighs each objective equally", action='store_true', default=True)
 
 if __name__ == "__main__":
     parameters = Parameters(parser)  # Inject the cla arguments in the parameters object
