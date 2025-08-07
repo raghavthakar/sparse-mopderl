@@ -7,6 +7,40 @@ from pderl_tools import PDERLTool
 from nsga2_tools import NSGA, nsga2_sort
 from archive import *
 from utils import create_scalar_list
+import mo_gymnasium as mo_gym
+
+import multiprocessing as mp
+from concurrent.futures import ProcessPoolExecutor
+from utils import NormalizedActions
+from run_mo_pderl import MOPDERLWrapper
+import random
+
+def _warmup_eval_task(payload):
+    (argsd, sd, mo_env_id, n_obj, eval_frames, num_evals, seed) = payload
+    class A: pass
+    a = A(); a.__dict__.update(argsd); a.device = torch.device("cpu")
+    torch.set_grad_enabled(False); torch.set_num_threads(1)
+    np.random.seed(seed); random.seed(seed); torch.manual_seed(seed)
+
+    env = NormalizedActions(MOPDERLWrapper(mo_gym.make(mo_env_id)))  # << mo_env_id
+    actor = ddpg.Actor(a); actor.load_state_dict(sd, strict=True); actor.eval()
+
+    fitness = np.zeros(n_obj, dtype=np.float32)
+    transitions = []
+    for k in range(num_evals):
+        obs = env.reset(seed=seed + 9973*k)     # << no tuple unpack
+        steps = 0; done = False
+        with torch.inference_mode():
+            while not done and steps < eval_frames:
+                act = actor.select_action(np.asarray(obs), False)  # or just actor.select_action(np.asarray(obs))
+                nxt, _, terminated, truncated, info = env.step(act.flatten())
+                done = bool(terminated or truncated)
+                rew_vec = info["obj"]
+                transitions.append((obs, act, rew_vec, nxt, float(done)))
+                fitness += rew_vec
+                obs = nxt; steps += 1
+    fitness /= float(num_evals)
+    return (fitness, transitions)
 
 class MOAgent:
     def __init__(self, args: Parameters, env, reward_keys: list, run_folder) -> None:
@@ -86,7 +120,7 @@ class MOAgent:
         self.archive_folder = os.path.join(self.run_folder, "archive")
         if not os.path.exists(self.archive_folder):
             os.mkdir(self.archive_folder)
-        
+
 
     def evaluate(self, agent, is_render=False, is_action_noise=False,
                  store_transition=True, rl_agent_index=None):
@@ -187,15 +221,47 @@ class MOAgent:
         if self.warm_up:
             for rl_agent_id in range(self.num_rl_agents):
                 pop = self.pop_list[rl_agent_id]
-                fitness = np.zeros((self.each_pop_size, self.num_objectives))
+                fitness = np.zeros((self.each_pop_size, self.num_objectives), dtype=np.float32)
                 self.fitness_list[rl_agent_id] = fitness
                 if self.num_frames[rl_agent_id] < self.args.warm_up_frames:
-                    for i in range(self.each_pop_size):
-                        for _ in range(self.args.num_evals):
-                            # episode_reward = self.evaluate(pop[i], is_render=False, is_action_noise=False, store_transition=True, rl_agent_index=None)
-                            episode_reward = self.evaluate(pop[i], is_render=False, is_action_noise=False, store_transition=True, rl_agent_index=rl_agent_id)
-                            fitness[i] += episode_reward
-                        fitness[i] /= self.args.num_evals
+                    if getattr(self.args, "warmup_workers", 0) > 0:
+                        # build payloads (send CPU weights, tiny args)
+                        argsd = {
+                            "state_dim": self.args.state_dim,
+                            "action_dim": self.args.action_dim,
+                            "ls": self.args.ls,
+                            "use_ln": True,
+                        }
+                        base_seed = int(self.args.seed + 10000*rl_agent_id + 100000*self.iterations)
+                        payloads = []
+                        for i, ga in enumerate(pop):
+                            sd = {k: v.cpu() for k, v in ga.actor.state_dict().items()}
+                            payloads.append((
+                                argsd,
+                                {k: v.cpu() for k, v in ga.actor.state_dict().items()},
+                                self.args.mo_env_id,                    # << use mo_env_id
+                                self.num_objectives,
+                                self.args.eval_frames,
+                                self.args.num_evals,
+                                base_seed + i
+                                ))
+                        # Process pool, portable "spawn" start on all OSes
+                        with mp.get_context("spawn").Pool(self.args.warmup_workers) as pool:
+                            results = pool.map(_warmup_eval_task, payloads, chunksize=1)
+                        # Push transitions & set fitness (order may vary; you said OK)
+                        for i, (fit_i, trans_i) in enumerate(results):
+                            fitness[i] = fit_i
+                            pop[i].yet_eval = True
+                            for (s, a, r, ns, d) in trans_i:
+                                pop[i].buffer.add(s, a, r, ns, d)
+                                self.gen_frames[rl_agent_id] += 1
+                                self.rl_agents[rl_agent_id].buffer.add(s, a, r, ns, d)
+                    else:
+                        for i in range(self.each_pop_size):
+                            for _ in range(self.args.num_evals):
+                                ep_r = self.evaluate(pop[i], is_render=False, is_action_noise=False, store_transition=True, rl_agent_index=rl_agent_id)
+                                fitness[i] += ep_r
+                            fitness[i] /= self.args.num_evals
                     self.pderl_tools.pderl_step(pop, rl_agent_id, fitness, logger)
                 
         else:

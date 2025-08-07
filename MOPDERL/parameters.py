@@ -56,6 +56,7 @@ class Parameters:
         else:
             self.num_rl_agents = 2 ** (self.num_objectives) - 1
         self.rl_type = param.rl_type
+        self.warmup_workers = getattr(param, "warmup_workers", 0)
 
 
         # DDPG params

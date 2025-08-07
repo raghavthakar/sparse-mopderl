@@ -66,7 +66,7 @@ parser.add_argument('-run_id', help="Specify run id, if not given, get id as len
 parser.add_argument('-save_ckpt', help="Save checkpoint every _ step, 0 for no save", type=int, default=1)
 parser.add_argument('-disable_wandb', action="store_true", default=False)
 parser.add_argument('-boundary_only', help="If false, will create a distinct RL agent for each objective and also one that weighs each objective equally", action='store_true', default=True)
-
+parser.add_argument('-warmup_workers', type=int, default=0, help='Parallelize ONLY warm-up policy evaluations. 0=off')
 if __name__ == "__main__":
     parameters = Parameters(parser)  # Inject the cla arguments in the parameters object
 
@@ -113,6 +113,7 @@ if __name__ == "__main__":
     }
     mo_name = name_map.get(parameters.env_name, parameters.env_name.lower())
     base_env = mo_gym.make(mo_name)
+    setattr(parameters, "mo_env_id", mo_name)
     # wrap + normalize actions exactly like before
     env = utils.NormalizedActions(MOPDERLWrapper(base_env))
     # env = gym.make(parameters.env_name)
