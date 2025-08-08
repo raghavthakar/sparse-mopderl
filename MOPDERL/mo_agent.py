@@ -331,28 +331,38 @@ class MOAgent:
         self.archive.save_info()
         
     
-    def load_info_mo(self, folder_path):
-        rl_agents_folder = os.path.join(folder_path, "rl_agents")
-        for i in range(len(self.rl_agents)):
-            rl_ag_fol = os.path.join(rl_agents_folder, str(i))
-            self.rl_agents[i].load_info(rl_ag_fol)
+    def load_info(self):
+        folder_path = self.checkpoint_folder
+        info = os.path.join(folder_path, "info.npy")
+        with open(info, "rb") as f:
+            self.num_frames = np.load(f)
+            self.gen_frames = np.load(f)
+            self.num_games = np.load(f)
+            self.trained_frames = np.load(f)
+            self.iterations = np.load(f)
 
+            has_warm = os.path.isdir(os.path.join(folder_path, "warm_up"))
+            has_mo   = os.path.isdir(os.path.join(folder_path, "multiobjective"))
 
-        pop_folder = os.path.join(folder_path, 'pop')
-        ##########################################
-        num_actors = len(os.listdir(pop_folder))
-        ##########################################
-        for i in range(num_actors):
-            gene_ag_fol = os.path.join(pop_folder, str(i))
-            new_genetic_agent = ddpg.GeneticAgent(self.args)
-            self.pop.append(new_genetic_agent)
-            self.pop[i].load_info(gene_ag_fol)
-        
-        with open(os.path.join(folder_path, 'count_actors.pkl'), 'rb') as f:
-            self.args.count_actors = pickle.load(f)
-            print("Loaded count: ", self.args.count_actors)
+            if has_mo:
+                self.warm_up = False
+            elif has_warm:
+                self.warm_up = True
+            else:
+                # fallback (old behavior)
+                self.warm_up = np.sum((self.num_frames <= self.args.warm_up_frames).astype(np.int32)) != 0
 
-        self.archive.load_info()
+            if self.warm_up:
+                self.fitness_list = np.load(f)
+            else:
+                self.fitness = np.load(f)
+                self.pop_individual_type = list(np.load(f))
+
+        if self.warm_up:
+            self.load_info_warm_up(os.path.join(folder_path, "warm_up"))
+        else:
+            self.load_info_mo(os.path.join(folder_path, "multiobjective"))
+
     
     def save_info_warm_up(self, folder_path):        
         rl_agents_folder = os.path.join(folder_path, "rl_agents")

@@ -182,7 +182,7 @@ if __name__ == "__main__":
             logger.info("Save warmup infor successfully!!!")   
             logger.info("\n")
             logger.info("\n")
-            warm_up_saved = True
+            warm_up_saved = bool(parameters.checkpoint)  # True when resuming from a checkpoint
             break
 
         if len(stats_wandb):
